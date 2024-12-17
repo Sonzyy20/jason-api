@@ -1,0 +1,76 @@
+$("#run").on("click", () => tryCatch(run));
+
+async function run() {
+  await Excel.run(async (context) => {
+    const update = async () => {
+      await context.sync();
+      console.log("updated");
+    };
+    let sheet = context.workbook.worksheets.getItem("testSheet");
+    let table = sheet.tables.getItem("testTable");
+
+    const columnA = table.columns
+      .getItem("location")
+      .getDataBodyRange()
+      .load("values");
+    const columnB = table.columns
+      .getItem("locations for check")
+      .getDataBodyRange()
+      .load("values");
+    const resultD = table.columns
+      .getItem("result")
+      .getDataBodyRange()
+      .load("values");
+    const resultArray = [];
+
+    try {
+      await update();
+      const valuesA = columnA.values;
+      const valuesB = columnB.values;
+      await update();
+      console.log(valuesA[0][0]);
+
+      for (let i = 0; i < valuesA.length; i++) {
+        console.log(columnA.values[i][0]);
+        let foundMatch = false;
+        for (let j = 0; j < valuesB.length; j++) {
+          console.log(j, valuesB[j][0]);
+          if (valuesA[i][0] == valuesB[j][0]) {
+            resultArray.push(1);
+            foundMatch = true;
+            break;
+          }
+        }
+
+        if (!foundMatch) {
+          console.log(`No match found for ${valuesA}`);
+          // Добавляем 0 в третий столбец, так как нет совпадения
+          const rowIndex = i;
+          resultD.values[i] = ["0"]; // Добавляем 0
+        } else {
+          // Если нашли совпадение
+          const rowIndex = i;
+          resultD.values[i] = ["1"];
+        }
+
+        resultD.getCell(i, 0).values = [[foundMatch ? 1 : 0]];
+      }
+
+      await update();
+      resultD.values[0] = ["new thing"];
+
+      await update();
+    } catch (error) {
+      console.log(error);
+    }
+  });
+}
+
+async function tryCatch(callback) {
+  try {
+    await callback();
+  } catch (error) {
+    // Note: In a production add-in, you'd want to notify the user through your add-in's UI.
+    console.error(error);
+  }
+}
